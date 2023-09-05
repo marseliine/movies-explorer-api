@@ -4,11 +4,13 @@ require('dotenv').config();
 const User = require('../models/user');
 const NotFoundError = require('../errors/NotFoundError');
 const UnauthorizedError = require('../errors/UnauthorizedError');
+const ConflictError = require('../errors/ConflictError');
+const BadRequestError = require('../errors/BadReqError');
+
 const {
   messageError,
   codeCreated,
 } = require('../errors/errors');
-// const { handleErrors } = require('../errors/errors');
 
 const { JWT_SECRET, NODE_ENV } = process.env;
 
@@ -22,9 +24,7 @@ const getMyProfile = (req, res, next) => {
         res.send(user);
       }
     })
-    .catch((error) => {
-      next(error);
-    });
+    .catch((error) => next(error));
 };
 
 const createUser = (req, res, next) => {
@@ -38,7 +38,15 @@ const createUser = (req, res, next) => {
     .then((user) => res.status(codeCreated.OK).send({
       name: user.name, email: user.email, _id: user._id,
     }))
-    .catch((error) => next(error));
+    .catch((error) => {
+      if (error.code === 11000) {
+        next(new ConflictError(messageError.ConflictError));
+      } else if (error.code === 400) {
+        next(new BadRequestError('${Object.values(err.errors).map((error) => error.message).join(', '}'));
+      } else {
+        next(error);
+      }
+    });
 };
 
 const login = (req, res, next) => {
@@ -57,7 +65,11 @@ const login = (req, res, next) => {
               { expiresIn: '7d' },
             );
             // console.log(token);
-            // res.cookie('jwt', token, { maxAge: 3600000 * 24 * 7, httpOnly: true, sameSite: true })
+            // res.cookie('jwt', token, {
+            // maxAge: 3600000 * 24 * 7,
+            // httpOnly: true,
+            // sameSite: true
+            // })
             //   .send({ token });
             res.send({ token });
           } else {

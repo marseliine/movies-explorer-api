@@ -1,22 +1,39 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const util = require('util');
+const config = require('config');
 const bodyParser = require('body-parser');
 // const cookies = require('cookie-parser');
 const { errors } = require('celebrate');
 require('dotenv').config();
 
-const userRoutes = require('./routes/users');
-const movieRoutes = require('./routes/movies');
-const { login, createUser } = require('./controllers/users');
+const router = require('./routes/index');
+
 const { auth } = require('./middlewares/auth');
-const { handleErrors } = require('./middlewares/errors');
+const handleErrors = require('./middlewares/errors');
 const NotFoundError = require('./errors/NotFoundError');
 const { messageError } = require('./errors/errors');
-const { registerValidation, loginValidation } = require('./middlewares/validation');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 
+const limiter = rateLimit({
+  windowMs: config.get('rateLimit.windowMs'),
+  max: config.get('rateLimit.max'),
+  standardHeaders: config.get('rateLimit.standardHeaders'),
+});
+
+const { DB_URL, NODE_ENV } = process.env;
+
+const mongoServerAddress = util.format(
+  'mongodb://%s:%s/%s',
+  config.get('mongo.server.host'),
+  config.get('mongo.server.port'),
+  config.get('mongo.server.db'),
+);
+
 const {
-  MONGODB_URL = 'mongodb://127.0.0.1:27017/bitfilmsdb',
+  MONGODB_URL = NODE_ENV === 'production' ? DB_URL : mongoServerAddress,
   PORT = 3000 || 4000,
 } = process.env;
 
@@ -25,8 +42,11 @@ mongoose.connect(MONGODB_URL, {
 });
 
 const app = express();
-const ALLOWED_CORS = [process.env.ALLOWED_ORIGINS_HTTP, process.env.ALLOWED_ORIGINS_HTTPS, 'localhost:3000'];
-console.log(process.env);
+const ALLOWED_CORS = [
+  process.env.ALLOWED_ORIGINS_HTTP,
+  process.env.ALLOWED_ORIGINS_HTTPS,
+  'localhost:3000',
+];
 
 app.use((req, res, next) => {
   const DEFAULT_ALLOWED_METHODS = 'GET,HEAD,PUT,PATCH,POST,DELETE';
@@ -47,10 +67,14 @@ app.use((req, res, next) => {
   return next();
 });
 
-// app.use(cookies());
-app.use(bodyParser.json());
+app.use(limiter);
 
 app.use(requestLogger);
+
+app.use(helmet());
+
+// app.use(cookies());
+app.use(bodyParser.json());
 
 app.get('/crash-test', () => {
   setTimeout(() => {
@@ -58,23 +82,18 @@ app.get('/crash-test', () => {
   }, 0);
 });
 
-app.post('/signin', loginValidation, login);
-app.post('/signup', registerValidation, createUser);
-
 app.use(auth);
 
-app.use('/users', userRoutes);
-app.use('/movies', movieRoutes);
-
-app.use(errors());
+app.use(router);
 
 app.use('/', (req, res, next) => {
   next(new NotFoundError(messageError.notFoundError));
 });
+
 app.use(errorLogger);
 app.use(handleErrors);
+app.use(errors());
 
 app.listen(PORT, () => {
-  console.log("Check");
   console.log(`App listening on port ${PORT}`);
 });

@@ -1,0 +1,7 @@
+{
+  "rateLimit": {
+    "windowMs": 900000, // In milliseconds
+    "max": 100, // limit each IP to 100 requests per `window`
+    "standardHeaders": true, // Return rate limit info in the `RateLimit-*` headers
+  }
+}

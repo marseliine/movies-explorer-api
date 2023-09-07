@@ -4,6 +4,6 @@
 
 Адрес репозитория: https://github.com/marseliine/movie-explorer-api
 
-IP 158.160.77.113
+IP 62.84.116.218
 
-Backend https://api.movie-explorer.nomoredomainsicu.ru
+Backend https://api.marlibon.nomoredomains.rocks

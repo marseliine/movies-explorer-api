@@ -7,3 +7,10 @@
 IP 62.84.116.218
 
 Backend https://api.marlibon.nomoredomains.rocks
+
+Бэкенд:
+
+NodeJS
+Express
+MongoDB
+Nginx
